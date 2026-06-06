@@ -1,0 +1,13 @@
+{
+  "name": "d0c-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "pnpm --filter server dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev": "pnpm --parallel dev",
+    "build:server": "pnpm --filter server build",
+    "build:web": "pnpm --filter web build",
+    "build": "pnpm --filter server build && pnpm --filter web build"
+  }
+}
