@@ -51,6 +51,18 @@ export const verifications = sqliteTable('verification', {
   updatedAt: integer('updatedAt', { mode: 'timestamp' }),
 });
 
+// --- SPACES SCHEMA ---
+
+export const spaces = sqliteTable('space', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  userId: text('userId')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+});
+
 // --- DOCUMENTS SCHEMA ---
 
 export const documents = sqliteTable('document', {
@@ -60,6 +72,8 @@ export const documents = sqliteTable('document', {
   userId: text('userId')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  spaceId: text('spaceId')
+    .references(() => spaces.id, { onDelete: 'set null' }), // nullable space reference
   isArchived: integer('isArchived', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),

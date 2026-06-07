@@ -8,6 +8,13 @@
       "when": 1780720737330,
       "tag": "0000_clumsy_wallow",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1780806281383,
+      "tag": "0001_graceful_boomer",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import { serve } from '@hono/node-server';
 import authRouter from './routes/auth.js';
 import documentsRouter from './routes/documents.js';
 import storageRouter from './routes/storage.js';
+import spacesRouter from './routes/spaces.js';
 import { sqlite } from './db/index.js';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -30,6 +31,7 @@ app.use('*', cors({
 app.route('/api/auth', authRouter);
 app.route('/api/documents', documentsRouter);
 app.route('/api/storage', storageRouter);
+app.route('/api/spaces', spacesRouter);
 
 // Health check endpoint
 app.get('/api/health', (c) => {

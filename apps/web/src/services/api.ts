@@ -1,9 +1,7 @@
 import { createAuthClient } from 'better-auth/client';
-import { db, type LocalDocument } from './idb';
+import { db, type LocalDocument, type LocalSpace } from './idb';
 
 // Initialize the Better Auth Client
-// baseURL is window.location.origin because we proxy /api/auth via Vite dev proxy
-// and serve from the same port in production.
 export const authClient = createAuthClient({
   baseURL: window.location.origin,
 });
@@ -39,6 +37,7 @@ export async function syncDocuments(): Promise<{ success: boolean; error?: strin
           id: d.id,
           title: d.title,
           content: d.content,
+          spaceId: d.spaceId,
           isArchived: d.isArchived,
           createdAt: d.createdAt,
           updatedAt: d.updatedAt,
@@ -73,6 +72,7 @@ export async function syncDocuments(): Promise<{ success: boolean; error?: strin
           id: sDoc.id,
           title: sDoc.title,
           content: sDoc.content,
+          spaceId: sDoc.spaceId,
           isArchived: sDoc.isArchived,
           createdAt: new Date(sDoc.createdAt).getTime(),
           updatedAt: new Date(sDoc.updatedAt).getTime(),
@@ -85,5 +85,64 @@ export async function syncDocuments(): Promise<{ success: boolean; error?: strin
   } catch (err: any) {
     console.warn('Sync failed (offline or network error):', err.message);
     return { success: false, error: err.message || 'Sync failed' };
+  }
+}
+
+/**
+ * Local-First Spaces Synchronization Engine
+ * Pushes unsynced changes to the server and pulls newer changes from the server.
+ */
+export async function syncSpaces(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const allLocalSpaces = await db.spaces.toArray();
+    const unsyncedSpaces = allLocalSpaces.filter(s => !s.isSynced);
+
+    const response = await apiFetch('/api/spaces/sync', {
+      method: 'POST',
+      body: JSON.stringify({
+        spaces: allLocalSpaces.map(s => ({
+          id: s.id,
+          name: s.name,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+        }))
+      }),
+    });
+
+    if (response.status === 401) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    if (!response.ok) {
+      throw new Error(`Server returned HTTP ${response.status}`);
+    }
+
+    const { spaces: serverSpaces } = await response.json();
+    const serverSpacesIds = new Set(serverSpaces.map((ss: any) => ss.id));
+
+    await db.transaction('rw', db.spaces, async () => {
+      // Mark local unsynced spaces as synced if the server accepted them
+      for (const localSpace of unsyncedSpaces) {
+        if (!serverSpacesIds.has(localSpace.id)) {
+          await db.spaces.update(localSpace.id, { isSynced: true });
+        }
+      }
+
+      // Merge server versions
+      for (const sSpace of serverSpaces) {
+        await db.spaces.put({
+          id: sSpace.id,
+          name: sSpace.name,
+          createdAt: new Date(sSpace.createdAt).getTime(),
+          updatedAt: new Date(sSpace.updatedAt).getTime(),
+          isSynced: true,
+        });
+      }
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    console.warn('Spaces sync failed:', err.message);
+    return { success: false, error: err.message || 'Spaces sync failed' };
   }
 }

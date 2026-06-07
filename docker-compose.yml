@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  d0c:
+    image: ghcr.io/bangsmackpow/d0c:latest
+    container_name: d0c-app
+    ports:
+      - "${D0C_PORT:-3000}:3000"
+    volumes:
+      - ${D0C_DATA_DIR:-./data}:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_PATH=/data/d0c.db
+      - STORAGE_PATH=/data/storage
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-a-very-secure-default-secret-change-me-in-production}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
+    restart: unless-stopped

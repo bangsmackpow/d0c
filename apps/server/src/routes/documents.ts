@@ -55,6 +55,7 @@ documentsRouter.post('/', async (c) => {
     title: body.title || 'Untitled',
     content: body.content || '{}',
     userId: session.user.id,
+    spaceId: body.spaceId || null,
     isArchived: false,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -83,6 +84,7 @@ documentsRouter.put('/:id', async (c) => {
     title: body.title !== undefined ? body.title : existing.title,
     content: body.content !== undefined ? body.content : existing.content,
     isArchived: body.isArchived !== undefined ? body.isArchived : existing.isArchived,
+    spaceId: body.spaceId !== undefined ? body.spaceId : existing.spaceId,
     updatedAt: new Date(),
   };
 
@@ -144,6 +146,7 @@ documentsRouter.post('/sync', async (c) => {
         title: clientDoc.title || 'Untitled',
         content: clientDoc.content || '{}',
         userId: session.user.id,
+        spaceId: clientDoc.spaceId || null,
         isArchived: clientDoc.isArchived === true,
         createdAt: new Date(clientDoc.createdAt || clientDoc.updatedAt),
         updatedAt: new Date(clientDoc.updatedAt),
@@ -156,6 +159,7 @@ documentsRouter.post('/sync', async (c) => {
         const updateData = {
           title: clientDoc.title || serverDoc.title,
           content: clientDoc.content || serverDoc.content,
+          spaceId: clientDoc.spaceId !== undefined ? clientDoc.spaceId : serverDoc.spaceId,
           isArchived: clientDoc.isArchived === true,
           updatedAt: new Date(clientDoc.updatedAt),
         };

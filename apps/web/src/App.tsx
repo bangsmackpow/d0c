@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type LocalDocument } from './services/idb';
-import { authClient, syncDocuments } from './services/api';
+import { authClient, syncDocuments, syncSpaces } from './services/api';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import { FileText, Save, ArrowRight, Loader2 } from 'lucide-react';
@@ -57,17 +57,20 @@ export default function App() {
       return;
     }
     
-    // We check if there are unsynced changes
-    const unsyncedCount = await db.documents.where('isSynced').equals(0).count();
-    if (unsyncedCount > 0) {
+    // Check if there are unsynced changes
+    const unsyncedDocs = await db.documents.where('isSynced').equals(0).count();
+    const unsyncedSpaces = await db.spaces.where('isSynced').equals(0).count();
+    if (unsyncedDocs > 0 || unsyncedSpaces > 0) {
       setSyncStatus('pending');
     }
 
-    const res = await syncDocuments();
-    if (res.success) {
+    const spacesRes = await syncSpaces();
+    const docsRes = await syncDocuments();
+
+    if (spacesRes.success && docsRes.success) {
       setSyncStatus('synced');
     } else {
-      if (res.error === 'Unauthorized') {
+      if (spacesRes.error === 'Unauthorized' || docsRes.error === 'Unauthorized') {
         // Sign out client if backend rejects credentials
         setSession(null);
       }
@@ -150,7 +153,7 @@ export default function App() {
     setActiveDocId(null);
   };
 
-  const createNewDoc = async () => {
+  const createNewDoc = async (spaceId: string | null = null) => {
     const id = crypto.randomUUID();
     const newDoc: LocalDocument = {
       id,
@@ -164,6 +167,7 @@ export default function App() {
           }
         ]
       }),
+      spaceId,
       isArchived: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -172,6 +176,46 @@ export default function App() {
 
     await db.documents.put(newDoc);
     setActiveDocId(id);
+    triggerSync();
+  };
+
+  const handleCreateSpace = async (name: string) => {
+    const id = crypto.randomUUID();
+    const newSpace = {
+      id,
+      name,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isSynced: false,
+    };
+    await db.spaces.put(newSpace);
+    triggerSync();
+  };
+
+  const handleRenameSpace = async (id: string, name: string) => {
+    await db.spaces.update(id, {
+      name,
+      updatedAt: Date.now(),
+      isSynced: false,
+    });
+    triggerSync();
+  };
+
+  const handleDeleteSpace = async (id: string) => {
+    await db.spaces.delete(id);
+    
+    // Set spaceId to null for all documents under this space
+    const spaceDocs = await db.documents.where('spaceId').equals(id).toArray();
+    await db.transaction('rw', db.documents, async () => {
+      for (const doc of spaceDocs) {
+        await db.documents.update(doc.id, {
+          spaceId: null,
+          updatedAt: Date.now(),
+          isSynced: false,
+        });
+      }
+    });
+    
     triggerSync();
   };
 
@@ -316,6 +360,9 @@ export default function App() {
         onTriggerSync={triggerSync}
         user={session.user}
         onLogout={handleLogout}
+        onCreateSpace={handleCreateSpace}
+        onRenameSpace={handleRenameSpace}
+        onDeleteSpace={handleDeleteSpace}
       />
 
       <main className="main-workspace">
