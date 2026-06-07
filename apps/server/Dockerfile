@@ -47,4 +47,4 @@ RUN mkdir -p /data/storage
 VOLUME [ "/data" ]
 
 # Auto-run migrations before starting server
-CMD ["sh", "-c", "pnpm --filter server db:migrate && node apps/server/dist/index.js"]
+CMD ["sh", "-c", "node apps/server/dist/db/migrate.js && node apps/server/dist/index.js"]
