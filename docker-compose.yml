@@ -2,6 +2,9 @@ version: '3.8'
 
 services:
   d0c:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
     image: ghcr.io/bangsmackpow/d0c:latest
     container_name: d0c-app
     ports:
